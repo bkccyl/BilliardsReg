@@ -146,10 +146,11 @@
         </select>
       </div>
 
-      <!-- 隊名輸入區塊 (動態顯示) -->
+     <!-- 隊名輸入區塊 (動態顯示) -->
       <div class="form-group hidden" id="teamNameGroup">
-        <label style="color: #fd7e14;">★ 此項目需填寫隊伍名稱：</label>
-        <input type="text" id="inpTeamName" placeholder="例如：A隊、B隊">
+        <label style="color: #fd7e14;">★ 此項目系統已自動配置隊名：</label>
+        <!-- ★ 加上 readonly-field 樣式與 readonly 屬性，禁止手動修改 -->
+        <input type="text" id="inpTeamName" class="readonly-field" readonly style="font-weight:bold; color:#1a73e8;">
       </div>
 
       <!-- 參賽選手勾選區塊 (動態顯示) -->

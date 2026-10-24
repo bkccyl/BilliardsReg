@@ -449,10 +449,13 @@
       statusDiv.style.color = '#555';
       statusDiv.innerText = '查詢中...';
       
-      google.script.run
-        .withSuccessHandler(handleSearchResult)
-        .withFailureHandler(err => statusDiv.innerText = '錯誤：' + err)
-        .searchSchool(query);
+      // ★ 改為本地端直接過濾陣列 (比對代碼或名稱)
+      const results = APP_DATA.schools.filter(s => 
+        s.code.includes(query) || s.name.includes(query)
+      );
+
+      // 直接將結果傳遞給處理函數
+      handleSearchResult(results);
     }
 
     function handleSearchResult(schools) {

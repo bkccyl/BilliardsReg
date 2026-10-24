@@ -602,6 +602,26 @@
       const needsTeam = eventItem.includes('團體') || eventItem.includes('雙打') || eventItem.includes('混雙') || eventItem.includes('混合');
       if(teamGroupDiv) teamGroupDiv.classList.toggle('hidden', !needsTeam);
 
+      // ★ 新增：自動計算並帶入順序隊名 (A隊、B隊...)
+      if (needsTeam) {
+        const existingTeams = (registeredEvents || [])
+          .filter(evt => evt.type === eventType && evt.item === eventItem)
+          .map(evt => evt.teamName);
+        
+        let nextTeamName = 'A隊';
+        // 從 A 到 Z 依序檢查哪個隊名還沒被使用
+        for (let i = 0; i < 26; i++) {
+          const candidate = String.fromCharCode(65 + i) + '隊'; // 65 是 'A' 的 ASCII 碼
+          if (!existingTeams.includes(candidate)) {
+            nextTeamName = candidate;
+            break;
+          }
+        }
+        document.getElementById('inpTeamName').value = nextTeamName;
+      } else {
+        if(document.getElementById('inpTeamName')) document.getElementById('inpTeamName').value = '';
+      }
+
       if(groupDiv) groupDiv.classList.remove('hidden');
       listDiv.innerHTML = '';
 
@@ -907,10 +927,11 @@
       }
     }
 
-    function removeRegisteredEvent(index) {
+   function removeRegisteredEvent(index) {
       registeredEvents.splice(index, 1);
       renderRegisteredEvents();
       updateDisplayTable();
+      updateEventPlayersSelection(); // ★ 新增這行：同步刷新隊名，釋放剛刪除的英文字母
       if(typeof saveStateLocally === 'function') saveStateLocally();
     }
 

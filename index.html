@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- ★ 引入本地端資料庫 -->
+  <script src="data.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 20px; background-color: #f0f2f5; color: #333; }
+    .header-title { text-align: center; margin-bottom: 25px; color: #1a73e8; }
+    
+    .layout-container { display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; }
+    .col-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); box-sizing: border-box; display: flex; flex-direction: column; }
+    .col-left { flex: 0 0 calc(30% - 14px); }
+    .col-mid { flex: 0 0 calc(35% - 14px); }
+    .col-right { flex: 0 0 calc(35% - 14px); }
+    
+    @media (max-width: 992px) {
+      .col-left, .col-mid, .col-right { flex: 0 0 100%; margin-bottom: 15px; }
+    }
+
+    .section-title { font-weight: bold; font-size: 16px; color: #1a73e8; margin-bottom: 15px; border-bottom: 2px solid #1a73e8; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .form-group { margin-bottom: 15px; }
+    label { font-weight: 600; display: block; margin-bottom: 6px; font-size: 14px; }
+    input[type="text"], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+    select:disabled { background-color: #e9ecef; cursor: not-allowed; }
+    
+    .btn { background-color: #1a73e8; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .btn:hover { background-color: #1557b0; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .btn-success { background-color: #28a745; width: 100%; margin-top: auto; padding: 12px; font-size: 16px; }
+    .btn-success:hover { background-color: #218838; }
+    .btn-danger { background-color: #dc3545; color: white; padding: 4px 8px; font-size: 12px; }
+    .btn-danger:hover { background-color: #bd2130; }
+    
+    .readonly-field { background-color: #e9ecef; }
+    .hidden { display: none; }
+    .status { margin-top: 8px; font-size: 13px; }
+
+    .display-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    .display-table th, .display-table td { border: 1px solid #dee2e6; padding: 6px; text-align: left; }
+    .display-table th { background-color: #f8f9fa; }
+    
+    .name-male { color: #1a73e8; font-weight: bold; }
+    .name-female { color: #fd7e14; font-weight: bold; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-content { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 850px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; margin-bottom: 15px; }
+    .modal-header h3 { margin: 0; color: #333; }
+    
+    .action-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; background-color: #e8f0fe; padding: 10px; border-radius: 6px; margin-bottom: 15px; }
+    
+    .edit-table { width: 100%; border-collapse: collapse; min-width: 650px; }
+    .edit-table th, .edit-table td { border: 1px solid #dee2e6; padding: 6px; text-align: left; font-size: 13px; }
+    .edit-table th { background-color: #f8f9fa; }
+    .edit-table input { width: 100%; padding: 4px; border: 1px solid #ced4da; border-radius: 3px; box-sizing: border-box; }
+    
+    .staff-display { background: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px; font-size: 14px; }
+    .staff-item { margin-bottom: 5px; }
+    .staff-item strong { color: #555; }
+    
+    /* 隊職員動態欄位樣式 */
+    .dynamic-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+
+    /* 多重選取清單與核取方塊樣式 */
+    .multi-select-box { border: 1px solid #ccc; border-radius: 4px; max-height: 200px; overflow-y: auto; background-color: #fff; padding: 5px; margin-top: 5px; }
+    .checkbox-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0; cursor: pointer; margin: 0; }
+    .checkbox-item:last-child { border-bottom: none; }
+    .checkbox-item:hover { background-color: #f8f9fa; }
+    .checkbox-item input[type="checkbox"] { margin-right: 10px; transform: scale(1.2); cursor: pointer; }
+
+    /* 自訂美化提示視窗 */
+    .custom-alert-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+    .custom-alert-box { background: white; padding: 25px 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 350px; text-align: center; width: 90%; }
+    .custom-alert-icon { font-size: 45px; margin-bottom: 12px; }
+    .custom-alert-msg { font-size: 15px; color: #333; margin-bottom: 20px; line-height: 1.5; font-weight: 500; }
+    .custom-alert-btn { background-color: #1a73e8; color: white; padding: 10px 25px; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; width: 100%; }
+    .custom-alert-btn:hover { background-color: #1557b0; }
+  </style>
+</head>
+<body>
+  <h2 class="header-title">全國中等學校撞球賽事報名系統</h2>
+
+  <div class="layout-container">
+    <!-- 左欄 (30%) -->
+    <div class="col-box col-left">
+      <div class="section-title">
+        報名學校資料
+        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 8px; background-color: #dc3545;" onclick="clearLocalData()">清除暫存並重置</button>
+      </div>
+      
+      <div class="form-group">
+        <label>搜尋學校（代碼或名稱）</label>
+        <div style="display: flex; gap: 5px;">
+          <input type="text" id="searchQuery" placeholder="例: 013501">
+          <button class="btn" onclick="handleSearch()">查詢</button>
+        </div>
+        <div id="searchStatus" class="status"></div>
+      </div>
+
+      <div class="form-group hidden" id="categorySelectGroup">
+        <label style="color: #dc3545;">★ 選擇部別：</label>
+        <select id="categorySelect" onchange="onCategoryChange()"></select>
+      </div>
+
+      <div class="form-group">
+        <label>已選學校</label>
+        <input type="text" id="schoolNameDisplay" class="readonly-field" readonly placeholder="尚未選擇學校">
+      </div>
+      
+      <!-- 隊職員專區 -->
+      <div class="section-title" style="margin-top: 10px;">
+        隊職員資料
+        <button class="btn" style="padding: 4px 8px;" onclick="openStaffModal()">編輯</button>
+      </div>
+      <div class="staff-display">
+        <div class="staff-item"><strong>領隊：</strong> <span id="lblLeader">(未填寫)</span></div>
+        <div class="staff-item"><strong>教練：</strong> <span id="lblCoach">(未填寫)</span></div>
+        <div class="staff-item" style="margin-bottom:0;"><strong>管理：</strong> <span id="lblManager">(未填寫)</span></div>
+      </div>
+      <!-- 已報名清單專區 -->
+      <div class="section-title" style="margin-top: 20px;">已報名項目清單</div>
+      <div id="registeredEventsContainer" style="background:#fff; border:1px solid #dee2e6; border-radius:4px; padding:10px; min-height:80px;">
+        <div style="text-align:center; color:#777; font-size:13px; margin-top:10px;">尚未加入任何報名項目</div>
+      </div>
+    </div>
+
+   <!-- 中欄 (35%) -->
+    <div class="col-box col-mid">
+      <div class="section-title">報名專區</div>
+      
+      <div class="form-group">
+        <label>比賽種類</label>
+        <select id="eventTypeSelect" onchange="onEventTypeChange()" disabled>
+          <option value="">-- 請先查詢學校 --</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>比賽項目</label>
+        <select id="eventItemSelect" onchange="onEventItemChange()" disabled>
+          <option value="">-- 請先選擇比賽種類 --</option>
+        </select>
+      </div>
+
+      <!-- 隊名輸入區塊 (動態顯示) -->
+      <div class="form-group hidden" id="teamNameGroup">
+        <label style="color: #fd7e14;">★ 此項目需填寫隊伍名稱：</label>
+        <input type="text" id="inpTeamName" placeholder="例如：A隊、B隊">
+      </div>
+
+      <!-- 參賽選手勾選區塊 (動態顯示) -->
+      <div class="form-group hidden" id="eventPlayersGroup">
+        <label style="color: #1a73e8;">勾選參加此項目的選手：</label>
+        <div class="multi-select-box" id="eventPlayersList">
+          <!-- JS 自動帶入符合性別的選手 -->
+        </div>
+        <div class="status" id="eventPlayersStatus" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
+      </div>
+
+      <!-- 加入報名清單按鈕 -->
+      <button class="btn" style="margin-bottom: 20px; font-size: 15px; padding: 10px;" onclick="addEventToRegistration()">➕ 加入報名清單</button>
+
+      <!-- 匯出按鈕 -->
+      <button class="btn btn-success" onclick="exportToExcel()">匯出最終報名表 Excel</button>
+    </div>
+
+    <!-- 右欄 (35%) -->
+    <div class="col-box col-right">
+      <div class="section-title">
+        選手名單
+        <button class="btn" style="padding: 4px 8px;" onclick="openModal()">編輯名冊</button>
+      </div>
+      
+      <table class="display-table">
+        <thead>
+          <tr>
+            <th style="width: 40px; text-align: center;">序號</th>
+            <th>姓名</th>
+            <th style="width: 50px; text-align: center;">性別</th>
+            <th>已報名項目</th>
+          </tr>
+        </thead>
+        <tbody id="displayPlayerBody">
+          <tr><td colspan="4" style="text-align: center; color: #777;">尚未加入選手</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 浮動視窗：隊職員資料編輯器 -->
+  <div class="modal-overlay" id="staffModal">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3>編輯隊職員資料</h3>
+        <button class="btn btn-secondary" style="padding: 4px 10px;" onclick="closeStaffModal()">取消</button>
+      </div>
+      <div class="form-group">
+        <label>領隊 (單一)</label>
+        <div class="dynamic-row">
+          <input type="text" id="inpLeaderName" placeholder="姓名">
+          <input type="text" id="inpLeaderPhone" placeholder="聯絡電話">
+          <div style="width:45px;"></div> <!-- 排版用空格 -->
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex; justify-content:space-between;">
+          教練 (可多位)
+          <button type="button" class="btn btn-secondary" style="padding:2px 6px; font-size:12px;" onclick="addStaffRow('coachContainer')">+ 新增</button>
+        </label>
+        <div id="coachContainer"></div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex; justify-content:space-between;">
+          管理 (可多位)
+          <button type="button" class="btn btn-secondary" style="padding:2px 6px; font-size:12px;" onclick="addStaffRow('managerContainer')">+ 新增</button>
+        </label>
+        <div id="managerContainer"></div>
+      </div>
+      <div style="text-align: right; margin-top: 20px;">
+        <button class="btn btn-success" style="width: auto; padding: 10px 30px;" onclick="saveStaffData()">確認儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮動視窗：選手資料編輯器 -->
+  <div class="modal-overlay" id="playerModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>管理選手名冊</h3>
+        <button class="btn btn-secondary" style="padding: 4px 10px;" onclick="closeModal()">取消</button>
+      </div>
+      
+      <div class="action-bar">
+        <div>
+          <label style="display:inline; margin:0;">匯入 Excel：</label>
+          <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)">
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="addPlayerRow()">+ 手動新增一筆</button>
+      </div>
+
+      <div style="overflow-x: auto; max-height: 50vh;">
+        <table class="edit-table">
+          <thead>
+            <tr>
+              <th style="width: 40px; text-align: center;">序號</th>
+              <th style="width: 120px;">姓名</th>
+              <th style="width: 120px;">生日(民國年月日)</th>
+              <th style="width: 140px;">身份證字號</th>
+              <th style="width: 130px;">手機電話</th>
+              <th style="width: 50px; text-align: center;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="playerTableBody">
+          </tbody>
+        </table>
+      </div>
+      
+      <div style="text-align: right; margin-top: 20px;">
+        <button class="btn btn-success" style="width: auto; padding: 10px 30px;" onclick="saveModalData()">儲存並排序 (依性別)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+   const LOCAL_STORAGE_KEY = 'billiardsRegistrationState';
+    let currentSchools = [];
+    let selectedSchool = null;
+    let availableEventsMap = {};
+    
+    // 【修改點】改用「學校代碼_部別」作為唯一鍵值的完整資料庫
+    let schoolDataMap = {}; 
+    let schoolStaffMap = {}; // ★ 新增：依「學校代碼」共用的隊職員資料庫
+    let savedPlayersData = [];
+    let selectedEventPlayerIds = []; 
+    let registeredEvents = [];
+    
+    // 更新為陣列結構以支援多位教練/管理
+    let staffData = { 
+      leader: { name: '', phone: '' }, 
+      coaches: [{ name: '', phone: '' }], 
+      managers: [{ name: '', phone: '' }] 
+    };
+
+    // --- 賽事分區轉換函數 ---
+    function getDisplayEventType(baseType, city) {
+      if (!city) return baseType; // 若無縣市資料則保持原樣
+      
+      if (baseType.includes('錦標賽')) {
+        return `${baseType} [${city}]`; // 錦標賽：直接接縣市名稱
+      } else if (baseType.includes('聯賽')) {
+        // 聯賽：對應北中南區
+        const north = ['新北市', '臺北市', '桃園市', '宜蘭縣', '新竹縣', '基隆市', '新竹市'];
+        const center = ['金門縣', '連江縣', '臺中市', '苗栗縣', '彰化縣', '南投縣', '雲林縣', '澎湖縣'];
+        
+        let region = '南區'; // 預設其餘為南區 (如臺南市、高雄市、屏東縣等)
+        if (north.includes(city)) region = '北區';
+        else if (center.includes(city)) region = '中區';
+        
+        return `${baseType} [${region}]`;
+      }
+      return baseType;
+    }
+
+  // --- LocalStorage 儲存與讀取功能 ---
+    function saveStateLocally() {
+      if (typeof cacheSelectedPlayers === 'function') cacheSelectedPlayers();
+
+      if (selectedSchool) {
+        // 1. 將選手與賽事存入「部別專屬」的資料庫
+        const key = `${selectedSchool.code}_${selectedSchool.category}`;
+        schoolDataMap[key] = {
+          players: [...savedPlayersData],
+          events: [...registeredEvents]
+        };
+        // 2. 將隊職員存入「學校共用」的資料庫 (同代碼共用)
+        schoolStaffMap[selectedSchool.code] = JSON.parse(JSON.stringify(staffData));
+      }
+
+      const state = {
+        searchQuery: document.getElementById('searchQuery').value,
+        currentSchools,
+        selectedSchool,
+        schoolDataMap,
+        schoolStaffMap, // ★ 寫入共用資料庫
+        availableEventsMap,
+        eventType: document.getElementById('eventTypeSelect').value,
+        eventItem: document.getElementById('eventItemSelect').value
+      };
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function loadStateLocally() {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!saved) {
+        if (document.getElementById('playerTableBody').rows.length === 0) addPlayerRow();
+        return;
+      }
+      
+      try {
+        const state = JSON.parse(saved);
+        
+        schoolDataMap = state.schoolDataMap || {};
+        schoolStaffMap = state.schoolStaffMap || {}; // ★ 讀取共用資料庫
+
+        if (state.searchQuery) {
+          document.getElementById('searchQuery').value = state.searchQuery;
+        }
+
+        if (state.currentSchools && state.currentSchools.length > 0) {
+          currentSchools = state.currentSchools;
+          if (currentSchools.length > 1) {
+            const select = document.getElementById('categorySelect');
+            select.innerHTML = '';
+            currentSchools.forEach((item, index) => {
+              // ★ 加上縣市與學校代碼
+              select.options.add(new Option(`【${item.category}】${item.name} (${item.city} - ${item.code})`, index));
+            });
+            document.getElementById('categorySelectGroup').classList.remove('hidden');
+            
+            if (state.selectedSchool) {
+              const matchIndex = currentSchools.findIndex(s => s.code === state.selectedSchool.code && s.category === state.selectedSchool.category);
+              if (matchIndex !== -1) select.value = matchIndex;
+            }
+          }
+        }
+
+        if (state.selectedSchool && state.availableEventsMap) {
+          selectedSchool = state.selectedSchool;
+          availableEventsMap = state.availableEventsMap;
+          
+          // ★ 選擇後，顯示欄位也一併加上縣市名稱
+      // ★ 還原時，顯示欄位也一併加上縣市名稱
+          document.getElementById('schoolNameDisplay').value = `${selectedSchool.name}（${selectedSchool.category} - ${selectedSchool.city}）`;
+          
+          const key = `${selectedSchool.code}_${selectedSchool.category}`;
+          const currentData = schoolDataMap[key] || { players: [], events: [] };
+          
+          savedPlayersData = currentData.players || [];
+          registeredEvents = currentData.events || [];
+          
+          // ★ 優先讀取學校共用的隊職員資料 (相容舊版存檔)
+          staffData = schoolStaffMap[selectedSchool.code] || currentData.staff || { leader:{name:'',phone:''}, coaches:[{name:'',phone:''}], managers:[{name:'',phone:''}] };
+
+          if (!state.schoolDataMap && state.allPlayersData) {
+             savedPlayersData = state.allPlayersData[selectedSchool.category] || [];
+             registeredEvents = state.registeredEvents || [];
+             staffData = state.staffData || staffData;
+          }
+
+          updateStaffDisplay();
+
+          const typeSel = document.getElementById('eventTypeSelect');
+          const itemSel = document.getElementById('eventItemSelect');
+          typeSel.innerHTML = '<option value="">-- 請選擇 --</option>';
+          
+         const keys = Object.keys(availableEventsMap);
+          if (keys.length > 0) {
+            keys.forEach(k => typeSel.options.add(new Option(getDisplayEventType(k, selectedSchool.city), k))); // ★ 加上分區顯示
+            typeSel.disabled = false;
+            
+            if (state.eventType) {
+              typeSel.value = state.eventType;
+              itemSel.innerHTML = '<option value="">-- 請選擇 --</option>';
+              availableEventsMap[state.eventType].forEach(item => itemSel.options.add(new Option(item, item)));
+              itemSel.disabled = false;
+              if (state.eventItem) itemSel.value = state.eventItem;
+            }
+          }
+        }
+
+        const tbody = document.getElementById('playerTableBody');
+        if (tbody) {
+          tbody.innerHTML = '';
+          savedPlayersData.forEach(d => addPlayerRow(d));
+          if (savedPlayersData.length === 0) addPlayerRow();
+        }
+
+        if (typeof renderRegisteredEvents === 'function') renderRegisteredEvents();
+        updateDisplayTable();
+        if (typeof updateEventPlayersSelection === 'function') updateEventPlayersSelection(); 
+
+      } catch (err) {
+        console.error('還原暫存資料失敗:', err);
+      }
+    }
+
+   
+
+    function clearLocalData() {
+      if (confirm('確定要清除目前的填寫紀錄並重新開始嗎？')) {
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        location.reload();
+      }
+    }
+
+    window.onload = function() {
+      loadStateLocally();
+    };
+    // -----------------------------------
+
+    function handleSearch() {
+      const query = document.getElementById('searchQuery').value.trim();
+      const statusDiv = document.getElementById('searchStatus');
+      if (!query) return;
+      statusDiv.style.color = '#555';
+      statusDiv.innerText = '查詢中...';
+      
+      google.script.run
+        .withSuccessHandler(handleSearchResult)
+        .withFailureHandler(err => statusDiv.innerText = '錯誤：' + err)
+        .searchSchool(query);
+    }
+
+    function handleSearchResult(schools) {
+      const statusDiv = document.getElementById('searchStatus');
+      if (!schools || schools.length === 0) {
+        statusDiv.style.color = '#dc3545';
+        statusDiv.innerText = '未找到學校資料';
+        selectedSchool = null;
+        document.getElementById('schoolNameDisplay').value = '';
+        saveStateLocally();
+        return;
+      }
+      currentSchools = schools;
+      if (schools.length === 1) {
+        document.getElementById('categorySelectGroup').classList.add('hidden');
+        selectSchool(schools[0]);
+      } else {
+        const select = document.getElementById('categorySelect');
+        select.innerHTML = '';
+        schools.forEach((item, index) => {
+          // ★ 加上縣市與學校代碼以便辨識同名學校
+          select.options.add(new Option(`【${item.category}】${item.name} (${item.city} - ${item.code})`, index));
+        });
+        document.getElementById('categorySelectGroup').classList.remove('hidden');
+        selectSchool(schools[0]);
+      }
+    }
+
+    function onCategoryChange() {
+      selectSchool(currentSchools[document.getElementById('categorySelect').value]);
+    }
+
+  function selectSchool(school) {
+      if (selectedSchool) {
+        const oldKey = `${selectedSchool.code}_${selectedSchool.category}`;
+        schoolDataMap[oldKey] = {
+          players: [...savedPlayersData],
+          events: [...registeredEvents]
+        };
+        schoolStaffMap[selectedSchool.code] = JSON.parse(JSON.stringify(staffData));
+      }
+
+      selectedSchool = school;
+      // ★ 選擇後，顯示欄位也一併加上縣市名稱
+      document.getElementById('schoolNameDisplay').value = `${school.name}（${school.category} - ${school.city}）`;
+      document.getElementById('searchStatus').innerText = '';
+
+      const newKey = `${selectedSchool.code}_${selectedSchool.category}`;
+      const newData = schoolDataMap[newKey] || { players: [], events: [] };
+      
+      savedPlayersData = newData.players || [];
+      registeredEvents = newData.events || [];
+      
+      // ★ 切換時，自動載入該學校代碼專屬的共用隊職員資料
+      staffData = schoolStaffMap[selectedSchool.code] || newData.staff || { leader:{name:'',phone:''}, coaches:[{name:'',phone:''}], managers:[{name:'',phone:''}] };
+
+      updateStaffDisplay();
+      
+      const tbody = document.getElementById('playerTableBody');
+      if (tbody) {
+        tbody.innerHTML = '';
+        savedPlayersData.forEach(d => addPlayerRow(d));
+        if (savedPlayersData.length === 0) addPlayerRow();
+      }
+
+      if (typeof renderRegisteredEvents === 'function') renderRegisteredEvents();
+      updateDisplayTable();
+      if (typeof updateEventPlayersSelection === 'function') updateEventPlayersSelection();
+
+      google.script.run.withSuccessHandler(populateEventTypes).getEventsByCategory(school.category);
+    }
+
+
+    function populateEventTypes(eventsMap) {
+      availableEventsMap = eventsMap;
+      const typeSel = document.getElementById('eventTypeSelect');
+      const itemSel = document.getElementById('eventItemSelect');
+      typeSel.innerHTML = '<option value="">-- 請選擇 --</option>';
+      itemSel.innerHTML = '<option value="">-- 請選擇 --</option>';
+      itemSel.disabled = true;
+
+      const keys = Object.keys(eventsMap);
+      if (keys.length === 0) {
+        typeSel.innerHTML = '<option value="">無可參加賽事</option>';
+        typeSel.disabled = true; 
+        updateDisplayTable();
+        saveStateLocally();
+        return;
+      }
+      keys.forEach(k => typeSel.options.add(new Option(getDisplayEventType(k, selectedSchool.city), k))); // ★ 加上分區顯示
+      typeSel.disabled = false;
+      
+      updateDisplayTable();
+      saveStateLocally(); 
+    }
+
+    function onEventTypeChange() {
+      const selected = document.getElementById('eventTypeSelect').value;
+      const itemSel = document.getElementById('eventItemSelect');
+      itemSel.innerHTML = '<option value="">-- 請選擇 --</option>';
+      if (selected && availableEventsMap[selected]) {
+        availableEventsMap[selected].forEach(item => itemSel.options.add(new Option(item, item)));
+        itemSel.disabled = false;
+      } else {
+        itemSel.disabled = true;
+      }
+      
+      selectedEventPlayerIds = []; 
+      updateEventPlayersSelection();
+      
+      // 【新增此段】切換賽制種類時，同步刷新「左下角清單」與「右側名冊狀態」
+      renderRegisteredEvents();
+      updateDisplayTable();
+      if(typeof saveStateLocally === 'function') saveStateLocally();
+    }
+
+    function onEventItemChange() {
+      // 選擇具體比賽項目後，清空先前的勾選狀態並展開選手名單與隊名輸入框
+      selectedEventPlayerIds = []; 
+      updateEventPlayersSelection(); 
+      
+      updateDisplayTable();
+      if(typeof saveStateLocally === 'function') saveStateLocally();
+    }
+
+  function updateEventPlayersSelection() {
+      const eventType = document.getElementById('eventTypeSelect').value;
+      const eventItem = document.getElementById('eventItemSelect').value;
+      const groupDiv = document.getElementById('eventPlayersGroup');
+      const listDiv = document.getElementById('eventPlayersList');
+      const statusDiv = document.getElementById('eventPlayersStatus');
+      const teamGroupDiv = document.getElementById('teamNameGroup');
+      
+      if (!eventItem || !eventType) {
+        if(groupDiv) groupDiv.classList.add('hidden');
+        if(teamGroupDiv) teamGroupDiv.classList.add('hidden');
+        if(listDiv) listDiv.innerHTML = '';
+        return;
+      }
+
+      const needsTeam = eventItem.includes('團體') || eventItem.includes('雙打') || eventItem.includes('混雙') || eventItem.includes('混合');
+      if(teamGroupDiv) teamGroupDiv.classList.toggle('hidden', !needsTeam);
+
+      if(groupDiv) groupDiv.classList.remove('hidden');
+      listDiv.innerHTML = '';
+
+      if (savedPlayersData.length === 0) {
+        listDiv.innerHTML = `<div style="padding:15px; color:#dc3545; text-align:center; background:#fff3f3; border-radius:4px;">
+          <strong>目前總名冊為空！</strong><br>請先點擊右方「編輯名冊」建立選手資料，才能在此勾選。
+        </div>`;
+        statusDiv.innerText = '';
+        return;
+      }
+
+      let targetGender = 'All'; 
+      if (eventItem.includes('混合') || eventItem.includes('混雙')) {
+        targetGender = 'All'; 
+      } else if (eventItem.includes('男')) {
+        targetGender = '男';
+      } else if (eventItem.includes('女')) {
+        targetGender = '女';
+      }
+
+      const eligiblePlayers = savedPlayersData.filter(p => {
+        if (targetGender !== 'All' && p.gender !== targetGender) return false;
+        
+        const uid = p.idCard || p.name; // ★ 關鍵修復：無身份證時改用姓名辨識
+        const playerRegEvents = (registeredEvents || []).filter(evt => evt.type === eventType && evt.playerIds.includes(uid));
+        
+        const alreadyInCurrentItem = playerRegEvents.some(evt => evt.item === eventItem);
+        if (alreadyInCurrentItem) return false;
+
+        const isCurrentTeam = eventItem.includes('團體');
+        const isCurrentMixed = eventItem.includes('混合') || eventItem.includes('混雙');
+       const isCurrentDoubles = eventItem.includes('雙打') && !isCurrentMixed;
+        
+        // ★ 修正：同時攔截「10號」與「十號」，並縮短關鍵字增加容錯率
+        const isCurrent10BallSingles = eventItem.includes('10號球個人') || eventItem.includes('十號球個人');
+
+        const inTeam = playerRegEvents.some(evt => evt.item.includes('團體'));
+        const inMixed = playerRegEvents.some(evt => evt.item.includes('混合') || evt.item.includes('混雙'));
+        const inDoubles = playerRegEvents.some(evt => evt.item.includes('雙打') && !evt.item.includes('混合') && !evt.item.includes('混雙'));
+        
+        // ★ 修正：同樣應用於已報名項目的歷史紀錄比對
+        const in10BallSingles = playerRegEvents.some(evt => evt.item.includes('10號球個人') || evt.item.includes('十號球個人'));
+
+        const isTargetSchool = selectedSchool && (selectedSchool.category === '國中組' || selectedSchool.category === '高中組');
+        const isHighSchool = selectedSchool && selectedSchool.category === '高中組';
+
+        // 【高中組專屬】10 號球個人賽不可跨任何項目
+        if (isHighSchool) {
+          if (in10BallSingles) return false; // 已報名10號球，不可選其他
+          if (isCurrent10BallSingles && playerRegEvents.length > 0) return false; // 已報名其他，不可選10號球
+        }
+
+        if (isTargetSchool && eventType === '全國中等學校撞球聯賽') {
+          if (isCurrentTeam && inMixed) return false;
+          if (isCurrentMixed && inTeam) return false;
+        }
+
+        if (isTargetSchool && eventType === '全國中等學校撞球錦標賽') {
+          if (inTeam || isCurrentTeam) {
+            if (playerRegEvents.length > 0) return false; 
+          }
+          if (p.gender === '男') {
+            if (inDoubles && isCurrentMixed) return false;
+            if (inMixed && isCurrentDoubles) return false;
+          }
+        }
+        
+        return true;
+      });
+
+      if (eligiblePlayers.length === 0) {
+        listDiv.innerHTML = `<div style="padding:10px; color:#dc3545; text-align:center;">
+          無可勾選選手。<br>可能是性別不符，或選手<strong>皆已報名此項目 / 違反跨項限制</strong>。
+        </div>`;
+        statusDiv.innerText = '';
+        return;
+      }
+
+      eligiblePlayers.forEach(p => {
+        const uid = p.idCard || p.name; // ★ 關鍵修復
+        const isChecked = selectedEventPlayerIds.includes(uid) ? 'checked' : '';
+        const nameClass = p.gender === '男' ? 'name-male' : 'name-female';
+        
+        const label = document.createElement('label');
+        label.className = 'checkbox-item';
+        label.innerHTML = `
+          <input type="checkbox" value="${uid}" ${isChecked} onchange="cacheSelectedPlayers()">
+          <span class="${nameClass}">${p.name}</span> <span style="color:#888; font-size:12px; margin-left:8px;">(${p.gender})</span>
+        `;
+        listDiv.appendChild(label);
+      });
+
+      statusDiv.innerText = `符合資格（排除已報名與衝突者）：共 ${eligiblePlayers.length} 位選手。`;
+    }
+
+    // 將多選清單中打勾的選手紀錄下來
+    function cacheSelectedPlayers() {
+      const checkboxes = document.querySelectorAll('#eventPlayersList input[type="checkbox"]');
+      selectedEventPlayerIds = Array.from(checkboxes)
+                                   .filter(cb => cb.checked)
+                                   .map(cb => cb.value);
+    }
+   /* --- 顯示美化提示視窗函數 --- */
+    function showCustomAlert(msg, type = 'error') {
+      const modal = document.getElementById('customAlertModal');
+      const icon = document.getElementById('customAlertIcon');
+      const msgDiv = document.getElementById('customAlertMsg');
+      
+      if (type === 'error') {
+        icon.innerHTML = '⚠️';
+        icon.style.color = '#dc3545';
+      } else if (type === 'success') {
+        icon.innerHTML = '✅';
+        icon.style.color = '#28a745';
+      }
+      
+      msgDiv.innerHTML = msg;
+      modal.style.display = 'flex';
+    }
+
+    /* --- 顯示美化確認視窗函數 (非同步) --- */
+    let confirmResolver = null;
+    function showCustomConfirm(msg) {
+      return new Promise(resolve => {
+        document.getElementById('customConfirmMsg').innerHTML = msg;
+        document.getElementById('customConfirmModal').style.display = 'flex';
+        confirmResolver = resolve;
+      });
+    }
+
+    function resolveCustomConfirm(result) {
+      document.getElementById('customConfirmModal').style.display = 'none';
+      if (confirmResolver) {
+        confirmResolver(result);
+        confirmResolver = null;
+      }
+    }
+
+    function closeCustomAlert() {
+      document.getElementById('customAlertModal').style.display = 'none';
+    }
+
+    async function addEventToRegistration() {
+      const type = document.getElementById('eventTypeSelect').value;
+      const item = document.getElementById('eventItemSelect').value;
+      if (!type || !item) return showCustomAlert("請先選擇比賽種類與項目！");
+
+      const needsTeam = item.includes('團體') || item.includes('雙打') || item.includes('混雙') || item.includes('混合');
+      const teamName = document.getElementById('inpTeamName') ? document.getElementById('inpTeamName').value.trim() : '';
+      
+      if (needsTeam) {
+        if (!teamName) return showCustomAlert("報名團體賽、雙打賽，請務必填寫<strong style='color:#fd7e14;'>隊伍名稱</strong>！");
+        if (registeredEvents && registeredEvents.length > 0) {
+          const isDuplicate = registeredEvents.some(evt => evt.type === type && evt.item === item && evt.teamName === teamName);
+          if (isDuplicate) return showCustomAlert(`此項目已經報名過 <strong style='color:#fd7e14;'>[${teamName}]</strong>！<br>同項目的隊伍名稱不可重複，請修改隊名。`);
+        }
+      }
+
+      const isTargetSchool = selectedSchool && (selectedSchool.category === '國中組' || selectedSchool.category === '高中組');
+      const isHighSchool = selectedSchool && selectedSchool.category === '高中組';
+
+      if (isTargetSchool && type === '全國中等學校撞球錦標賽' && item.includes('團體')) {
+        const existingTeamsCount = (registeredEvents || []).filter(evt => evt.type === type && evt.item === item).length;
+        if (existingTeamsCount >= 1) {
+          const confirmMsg = `<strong style="font-size:16px; color:#dc3545;">【⚠️ 賽制規定警語】</strong><br><br>${selectedSchool.category}男女團體賽每校限報名一隊。<br><br>若您確定要報名第二隊（含）以上，如果兩隊均入選全國賽，<strong>只能一隊參加全國賽，另一隊需棄賽</strong>。<br><br>請問是否確定要新增「<strong style="color:#1a73e8;">${teamName}</strong>」？`;
+          const confirmSecondTeam = await showCustomConfirm(confirmMsg);
+          if (!confirmSecondTeam) return; 
+        }
+      }
+
+      if (!selectedEventPlayerIds || selectedEventPlayerIds.length === 0) return showCustomAlert("請至少勾選一位參賽選手！");
+
+      const selectedPlayers = savedPlayersData.filter(p => {
+        const uid = p.idCard || p.name;
+        return selectedEventPlayerIds.includes(uid);
+      });
+      const count = selectedPlayers.length;
+
+      for (let i = 0; i < selectedPlayers.length; i++) {
+        const p = selectedPlayers[i];
+        const uid = p.idCard || p.name; // ★ 關鍵修復
+        const playerRegEvents = (registeredEvents || []).filter(evt => evt.type === type && evt.playerIds.includes(uid));
+        
+       const inTeam = playerRegEvents.some(evt => evt.item.includes('團體'));
+        const inMixed = playerRegEvents.some(evt => evt.item.includes('混合') || evt.item.includes('混雙'));
+        const inDoubles = playerRegEvents.some(evt => evt.item.includes('雙打') && !evt.item.includes('混合') && !evt.item.includes('混雙'));
+        
+        // ★ 修正：將嚴格的「十號球個人賽」改為兼容版
+        const in10BallSingles = playerRegEvents.some(evt => evt.item.includes('10號球個人') || evt.item.includes('十號球個人'));
+        
+        const isCurrentTeam = item.includes('團體');
+        const isCurrentMixed = item.includes('混合') || item.includes('混雙');
+        const isCurrentDoubles = item.includes('雙打') && !isCurrentMixed;
+        
+        // ★ 修正：當前點選的項目也改為兼容版
+        const isCurrent10BallSingles = item.includes('10號球個人') || item.includes('十號球個人');
+
+        if (isHighSchool) {
+          if (in10BallSingles || (isCurrent10BallSingles && playerRegEvents.length > 0)) {
+            return showCustomAlert(`選手 <strong style="color:#1a73e8;">${p.name}</strong> 跨項衝突！<br>高中組<strong>十號球個人賽</strong>不可與其他任何項目兼報。`);
+          }
+        }
+        if (isTargetSchool && type === '全國中等學校撞球聯賽') {
+          if ((isCurrentTeam && inMixed) || (isCurrentMixed && inTeam)) {
+            return showCustomAlert(`選手 <strong style="color:#1a73e8;">${p.name}</strong> 跨項衝突！<br>${selectedSchool.category}聯賽的<strong>團體賽</strong>與<strong>混合雙打</strong>不可兼報。`);
+          }
+        }
+        if (isTargetSchool && type === '全國中等學校撞球錦標賽') {
+          if ((inTeam || isCurrentTeam) && playerRegEvents.length > 0) {
+            return showCustomAlert(`選手 <strong style="color:#1a73e8;">${p.name}</strong> 跨項衝突！<br>${selectedSchool.category}錦標賽<strong>團體賽的選手不可跨項</strong>。`);
+          }
+          if (p.gender === '男' && ((inDoubles && isCurrentMixed) || (inMixed && isCurrentDoubles))) {
+            return showCustomAlert(`選手 <strong style="color:#1a73e8;">${p.name}</strong> 跨項衝突！<br>${selectedSchool.category}錦標賽男子選手的<strong>雙打與混雙只能擇一</strong>。`);
+          }
+        }
+      }
+
+      if (item.includes('混合') || item.includes('混雙')) {
+        if (count !== 2) return showCustomAlert(`【混合雙打賽】必須剛好勾選 2 位選手！<br>目前勾選了 <strong>${count}</strong> 位。`);
+        const males = selectedPlayers.filter(p => p.gender === '男').length;
+        const females = selectedPlayers.filter(p => p.gender === '女').length;
+        if (males !== 1 || females !== 1) return showCustomAlert(`【混合雙打賽】必須為 <strong>1 男 1 女</strong>！<br>目前勾選了 ${males} 男 ${females} 女。`);
+      } else if (item.includes('雙打')) {
+        if (count !== 2) return showCustomAlert(`【雙打賽】必須剛好勾選 2 位選手！<br>目前勾選了 <strong>${count}</strong> 位。`);
+      } else if (item.includes('團體')) {
+        if (count < 3 || count > 4) return showCustomAlert(`【團體賽】人數限制為 3 至 4 人！<br>目前勾選了 <strong>${count}</strong> 位。`);
+      }
+
+      const playerNames = selectedPlayers.map(p => p.name);
+
+      if (!registeredEvents) registeredEvents = [];
+      registeredEvents.push({
+        type: type,
+        item: item,
+        teamName: needsTeam ? teamName : '',
+        playerIds: [...selectedEventPlayerIds],
+        playerNames: playerNames
+      });
+
+      if(document.getElementById('inpTeamName')) document.getElementById('inpTeamName').value = '';
+      selectedEventPlayerIds = [];
+      document.getElementById('eventItemSelect').value = ''; 
+      
+      updateEventPlayersSelection(); 
+      renderRegisteredEvents();
+      updateDisplayTable();
+      if(typeof saveStateLocally === 'function') saveStateLocally();
+
+      showCustomAlert(`成功將 <strong>${item}</strong> 加入報名清單！`, 'success');
+    }
+
+  // 渲染左下角的報名清單 (依當前選擇的賽事種類進行過濾與群組顯示)
+    function renderRegisteredEvents() {
+      const container = document.getElementById('registeredEventsContainer');
+      if (!container) return;
+      
+      const currentType = document.getElementById('eventTypeSelect').value;
+      
+      // 過濾出「目前所選比賽種類」的報名清單
+      const currentTypeEvents = (registeredEvents || []).filter(evt => evt.type === currentType);
+
+      if (currentTypeEvents.length === 0) {
+        container.innerHTML = `<div style="text-align:center; color:#777; font-size:13px; margin-top:10px;">尚未在「${currentType || '未選擇賽事'}」加入任何報名項目</div>`;
+        return;
+      }
+      container.innerHTML = '';
+
+      const groupedEvents = {};
+      
+      // 迭代所有資料，但只將符合 currentType 的渲染到畫面上
+      // 保留 originalIdx 是為了確保刪除時，能夠對應到總陣列中正確的資料
+      registeredEvents.forEach((evt, originalIdx) => {
+        if (evt.type === currentType) {
+          if (!groupedEvents[evt.item]) groupedEvents[evt.item] = [];
+          groupedEvents[evt.item].push({ ...evt, originalIdx });
+        }
+      });
+
+      for (const itemName in groupedEvents) {
+        const groupDiv = document.createElement('div');
+        groupDiv.style.cssText = "border-bottom: 2px solid #e9ecef; padding-bottom: 10px; margin-bottom: 10px; font-size: 13px;";
+        
+        const titleDiv = document.createElement('div');
+        titleDiv.innerHTML = `<strong style="font-size: 14px; color: #1a73e8;">${itemName}</strong>`;
+        titleDiv.style.marginBottom = "8px";
+        groupDiv.appendChild(titleDiv);
+
+        groupedEvents[itemName].forEach(entry => {
+          const entryDiv = document.createElement('div');
+          entryDiv.style.cssText = "display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 6px; padding-left: 10px;";
+          
+          const teamPrefix = entry.teamName ? `<span style="color:#fd7e14; font-weight:bold; margin-right: 5px;">[${entry.teamName}]</span>` : '';
+          
+          entryDiv.innerHTML = `
+            <div style="flex: 1;">
+              ${teamPrefix}<span style="color:#555;">選手：${entry.playerNames.join('、')}</span>
+            </div>
+            <button class="btn btn-danger" style="padding:2px 6px; margin-left: 10px; font-size:12px;" onclick="removeRegisteredEvent(${entry.originalIdx})">刪除</button>
+          `;
+          groupDiv.appendChild(entryDiv);
+        });
+        container.appendChild(groupDiv);
+      }
+    }
+
+    function removeRegisteredEvent(index) {
+      registeredEvents.splice(index, 1);
+      renderRegisteredEvents();
+      updateDisplayTable();
+      if(typeof saveStateLocally === 'function') saveStateLocally();
+    }
+
+
+
+    /* --- 隊職員功能 --- */
+    function openStaffModal() {
+      document.getElementById('inpLeaderName').value = staffData.leader.name;
+      document.getElementById('inpLeaderPhone').value = staffData.leader.phone;
+      
+      renderStaffContainer('coachContainer', staffData.coaches);
+      renderStaffContainer('managerContainer', staffData.managers);
+      
+      document.getElementById('staffModal').style.display = 'flex';
+    }
+
+    function closeStaffModal() {
+      document.getElementById('staffModal').style.display = 'none';
+    }
+
+    function renderStaffContainer(containerId, dataArray) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      if (dataArray.length === 0) dataArray.push({name: '', phone: ''});
+      dataArray.forEach(d => addStaffRow(containerId, d.name, d.phone));
+    }
+
+    function addStaffRow(containerId, name = '', phone = '') {
+      const container = document.getElementById(containerId);
+      const div = document.createElement('div');
+      div.className = 'dynamic-row';
+      div.innerHTML = `
+        <input type="text" class="staff-name" placeholder="姓名" value="${name}">
+        <input type="text" class="staff-phone" placeholder="聯絡電話" value="${phone}">
+        <button type="button" class="btn btn-danger" style="padding:6px 10px;" onclick="this.parentElement.remove()">X</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function saveStaffData() {
+      staffData.leader.name = document.getElementById('inpLeaderName').value.trim();
+      staffData.leader.phone = document.getElementById('inpLeaderPhone').value.trim();
+
+      // 提取教練資料
+      staffData.coaches = Array.from(document.getElementById('coachContainer').children).map(row => ({
+        name: row.querySelector('.staff-name').value.trim(),
+        phone: row.querySelector('.staff-phone').value.trim()
+      })).filter(c => c.name || c.phone);
+      if(staffData.coaches.length === 0) staffData.coaches.push({name:'', phone:''});
+
+      // 提取管理資料
+      staffData.managers = Array.from(document.getElementById('managerContainer').children).map(row => ({
+        name: row.querySelector('.staff-name').value.trim(),
+        phone: row.querySelector('.staff-phone').value.trim()
+      })).filter(m => m.name || m.phone);
+      if(staffData.managers.length === 0) staffData.managers.push({name:'', phone:''});
+
+      updateStaffDisplay();
+      saveStateLocally(); 
+      closeStaffModal();
+    }
+
+    function updateStaffDisplay() {
+      document.getElementById('lblLeader').innerText = staffData.leader.name || '(未填寫)';
+      
+      const coachNames = staffData.coaches.map(c => c.name).filter(n => n).join('、');
+      document.getElementById('lblCoach').innerText = coachNames || '(未填寫)';
+      
+      const managerNames = staffData.managers.map(m => m.name).filter(n => n).join('、');
+      document.getElementById('lblManager').innerText = managerNames || '(未填寫)';
+    }
+
+    /* --- 選手名冊功能 --- */
+    function parseGender(idCard) {
+      if (!idCard || idCard.length < 2) return '';
+      const g = idCard.toUpperCase().charAt(1);
+      if (g === '1') return '男';
+      if (g === '2') return '女';
+      return '未知';
+    }
+
+    function openModal() {
+      document.getElementById('playerModal').style.display = 'flex';
+      if (document.getElementById('playerTableBody').rows.length === 0) addPlayerRow();
+    }
+    
+    function closeModal() {
+      document.getElementById('playerModal').style.display = 'none';
+    }
+
+    function addPlayerRow(data = {}) {
+      const tbody = document.getElementById('playerTableBody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="row-seq" style="text-align: center;">${tbody.rows.length + 1}</td>
+        <td><input type="text" class="p-name" value="${data.name || ''}"></td>
+        <td><input type="text" class="p-bday" value="${data.birthday || ''}"></td>
+        <td><input type="text" class="p-id" value="${data.idCard || ''}" placeholder="判斷性別用"></td>
+        <td><input type="text" class="p-phone" value="${data.phone || ''}"></td>
+        <td style="text-align: center;"><button class="btn btn-danger" onclick="removePlayerRow(this)">刪除</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function removePlayerRow(btn) {
+      btn.closest('tr').remove();
+      Array.from(document.querySelectorAll('#playerTableBody tr')).forEach((r, idx) => {
+        r.querySelector('.row-seq').innerText = idx + 1;
+      });
+    }
+
+   function saveModalData() {
+      const rows = document.querySelectorAll('#playerTableBody tr');
+      let tempSaved = [];
+      let hasError = false;
+      let errorMsg = '';
+      const idRegex = /^[A-Z][12][0-9]{8}$/i; // 台灣身份證正規表達式(允小寫)
+      const idSet = new Set();
+      
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const name = r.querySelector('.p-name').value.trim();
+        const birthday = r.querySelector('.p-bday').value.trim();
+        let idCard = r.querySelector('.p-id').value.trim().toUpperCase();
+        const phone = r.querySelector('.p-phone').value.trim();
+        
+        if (!name && !idCard) continue; // 忽略空白行
+        
+        if (!name) { hasError = true; errorMsg = `第 ${i+1} 列的「姓名」不可為空！`; break; }
+        if (!idCard) { hasError = true; errorMsg = `選手 ${name} 的「身份證字號」不可為空！`; break; }
+        if (!idRegex.test(idCard)) { hasError = true; errorMsg = `選手 ${name} 的身份證字號「${idCard}」格式不符！`; break; }
+        if (idSet.has(idCard)) { hasError = true; errorMsg = `身份證字號「${idCard}」重複出現，請檢查！`; break; }
+        
+        idSet.add(idCard);
+        r.querySelector('.p-id').value = idCard; // 強制轉大寫顯示
+        tempSaved.push({ name, birthday, idCard, phone, gender: parseGender(idCard) });
+      }
+
+      if (hasError) return showCustomAlert(errorMsg);
+
+      savedPlayersData = tempSaved;
+      savedPlayersData.sort((a, b) => {
+        if (a.gender === '男' && b.gender !== '男') return -1;
+        if (a.gender !== '男' && b.gender === '男') return 1;
+        return 0;
+      });
+
+      const tbody = document.getElementById('playerTableBody');
+      tbody.innerHTML = '';
+      savedPlayersData.forEach(d => addPlayerRow(d));
+
+      updateDisplayTable();
+      if (typeof updateEventPlayersSelection === 'function') updateEventPlayersSelection();
+      
+      saveStateLocally(); 
+      closeModal();
+      showCustomAlert('選手名冊已成功儲存！', 'success');
+    }
+
+    function updateDisplayTable() {
+      const displayBody = document.getElementById('displayPlayerBody');
+      displayBody.innerHTML = '';
+      const currentType = document.getElementById('eventTypeSelect').value;
+
+      if (savedPlayersData.length === 0) {
+        displayBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #777;">尚未加入選手</td></tr>';
+        return;
+      }
+
+      savedPlayersData.forEach((d, idx) => {
+        let nameClass = d.gender === '男' ? 'name-male' : (d.gender === '女' ? 'name-female' : '');
+        const uid = d.idCard || d.name; // ★ 關鍵修復
+        
+        const playerEvents = (registeredEvents || [])
+          .filter(e => e.playerIds.includes(uid) && e.type === currentType)
+          .map(e => e.item + (e.teamName ? `<span style="color:#fd7e14;">[${e.teamName}]</span>` : ''));
+        
+        const eventStr = playerEvents.length > 0 ? playerEvents.join('<br>') : '<span style="color:#aaa;">未報名</span>';
+
+        displayBody.innerHTML += `
+          <tr>
+            <td style="text-align:center">${idx + 1}</td>
+            <td class="${nameClass}">${d.name}</td>
+            <td style="text-align:center">${d.gender}</td>
+            <td>${eventStr}</td>
+          </tr>
+        `;
+      });
+    }
+
+   function handleExcelUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+          const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+          if (!rows || rows.length < 2) return showCustomAlert('Excel 檔無有效資料！');
+
+          const headers = rows[0].map(h => (h || '').toString().trim());
+          const nameIdx = headers.findIndex(h => h.includes('姓名'));
+          const bdayIdx = headers.findIndex(h => h.includes('生日'));
+          const idIdx = headers.findIndex(h => h.includes('身份證') || h.includes('身分證'));
+          const phoneIdx = headers.findIndex(h => h.includes('手機') || h.includes('電話'));
+
+          if (nameIdx === -1 || idIdx === -1) return showCustomAlert('匯入失敗：需包含「姓名」與「身份證字號」欄位。');
+
+          document.getElementById('playerTableBody').innerHTML = '';
+          for (let i = 1; i < rows.length; i++) {
+            if (!rows[i] || !rows[i][nameIdx]) continue;
+            
+            // ★ 新增：處理手機號碼格式 (自動補 0 與過濾非數字字元)
+            let phoneVal = phoneIdx !== -1 ? (rows[i][phoneIdx] || '').toString().trim() : '';
+            phoneVal = phoneVal.replace(/\D/g, ''); // 移除所有連字號(-)或空格
+            if (phoneVal.length === 9 && phoneVal.startsWith('9')) {
+              phoneVal = '0' + phoneVal; // 若因 Excel 轉數值而遺失開頭的 0，自動補回
+            }
+
+            addPlayerRow({
+              name: rows[i][nameIdx] || '',
+              birthday: bdayIdx !== -1 ? (rows[i][bdayIdx] || '') : '',
+              idCard: idIdx !== -1 ? (rows[i][idIdx] || '') : '',
+              phone: phoneVal
+            });
+          }
+          showCustomAlert(`已成功載入 Excel 資料！<br>請點擊「儲存並排序」完成匯入確認。`, 'success');
+        } catch (err) { showCustomAlert('匯入失敗：' + err.message); }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = '';
+    }
+
+function exportToExcel() {
+      if (!selectedSchool) return showCustomAlert('請先查詢並選擇學校！');
+      
+      const currentType = document.getElementById('eventTypeSelect').value;
+      if (!currentType) return showCustomAlert('請先選擇要匯出的比賽種類！');
+
+      const currentTypeEvents = (registeredEvents || []).filter(evt => evt.type === currentType);
+      
+      // 取得帶有分區的完整賽事名稱
+      const displayTypeName = typeof getDisplayEventType === 'function' ? getDisplayEventType(currentType, selectedSchool.city) : currentType;
+
+      if (currentTypeEvents.length === 0) return showCustomAlert(`請先於畫面中新增至少一個「${displayTypeName}」的報名項目！`);
+
+      const exportData = [];
+      
+      // === 1. 建立上方表頭與隊職員區塊 ===
+      exportData.push(['學校名稱', selectedSchool.name]);
+      // 若後端有抓到地址則顯示，否則留空
+      exportData.push(['學校地址', selectedSchool.address || '']); 
+      exportData.push(['職稱', '姓名', '', '電話']);
+      
+      exportData.push(['領隊', staffData.leader.name || '', '', staffData.leader.phone || '']);
+      
+      const coachesNameStr = staffData.coaches.map(c => c.name).filter(n => n).join('、');
+      const coachesPhoneStr = staffData.coaches.map(c => c.phone).filter(p => p).join('、');
+      exportData.push(['教練', coachesNameStr, '', coachesPhoneStr]);
+      
+      const managersNameStr = staffData.managers.map(m => m.name).filter(n => n).join('、');
+      const managersPhoneStr = staffData.managers.map(m => m.phone).filter(p => p).join('、');
+      exportData.push(['管理', managersNameStr, '', managersPhoneStr]);
+      
+      // 插入一個空行分隔
+      exportData.push([]); 
+
+      // === 2. 建立下方選手明細表頭 ===
+      exportData.push(['比賽種類', '學校名稱', '序號', '組別', '比賽項目', '隊名', '選手姓名', '性別', '生日', '身份證字號', '選手電話']);
+
+      let rowIndex = 1;
+      let hasError = false;
+      
+      // === 3. 填入報名選手資料 ===
+      currentTypeEvents.forEach(evt => {
+        const participatingPlayers = savedPlayersData.filter(p => {
+          const uid = p.idCard || p.name; 
+          return evt.playerIds.includes(uid);
+        });
+        
+        participatingPlayers.forEach((d) => {
+          if (!d.name || !d.idCard) hasError = true;
+          exportData.push([
+            displayTypeName,                     // A: 比賽種類 (含分區)
+            selectedSchool.name,                 // B: 學校名稱
+            rowIndex++,                          // C: 序號
+            selectedSchool.category,             // D: 組別 (國中組/高中組)
+            evt.item,                            // E: 比賽項目
+            evt.teamName || '',                  // F: 隊名
+            d.name,                              // G: 選手姓名
+            d.gender,                            // H: 性別
+            d.birthday,                          // I: 生日
+            d.idCard,                            // J: 身份證字號
+            d.phone || ''                        // K: 選手電話
+          ]);
+        });
+      });
+
+      if (hasError) return showCustomAlert('匯出失敗：選手姓名與身份證字號不得為空！');
+
+      const worksheet = XLSX.utils.aoa_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "報名表");
+      
+      // ★ 修正：檔案名稱格式改為「比賽種類[分區]_學校名稱_部別_報名總表.xlsx」
+      XLSX.writeFile(workbook, `${displayTypeName}_${selectedSchool.name}_${selectedSchool.category}_報名總表.xlsx`);
+      showCustomAlert(`【${displayTypeName}】報名表 Excel 檔已成功匯出下載！`, 'success');
+    }
+  </script>
+  <!-- 美化提示視窗 -->
+  <div class="custom-alert-overlay" id="customAlertModal">
+    <div class="custom-alert-box">
+      <div class="custom-alert-icon" id="customAlertIcon">⚠️</div>
+      <div class="custom-alert-msg" id="customAlertMsg">錯誤訊息</div>
+      <button class="custom-alert-btn" onclick="closeCustomAlert()">確定</button>
+    </div>
+  </div>
+  <!-- 美化確認視窗 (Confirm) -->
+  <div class="custom-alert-overlay" id="customConfirmModal">
+    <div class="custom-alert-box">
+      <div class="custom-alert-icon" style="color: #fd7e14;">⚠️</div>
+      <div class="custom-alert-msg" id="customConfirmMsg">確認訊息</div>
+      <div style="display: flex; gap: 15px; justify-content: center; margin-top: 15px;">
+        <button class="custom-alert-btn" style="background-color: #6c757d; flex: 1;" onclick="resolveCustomConfirm(false)">取消</button>
+        <button class="custom-alert-btn" style="background-color: #dc3545; flex: 1;" onclick="resolveCustomConfirm(true)">確定新增</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

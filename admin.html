@@ -1,1 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>賽事報名資料彙整與統計系統</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; }
+    .header-title { text-align: center; margin-bottom: 25px; color: #1a73e8; }
+    
+    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    
+    .upload-zone { border: 2px dashed #1a73e8; padding: 30px; text-align: center; border-radius: 8px; background-color: #f8faff; margin-bottom: 25px; transition: 0.3s; }
+    .upload-zone:hover { background-color: #eef3ff; }
+    .upload-zone input[type="file"] { display: none; }
+    .upload-btn { background-color: #1a73e8; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    .upload-btn:hover { background-color: #1557b0; }
+    
+    .status-bar { margin-top: 15px; font-size: 14px; color: #555; }
+    
+    .card { border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 20px; overflow: hidden; }
+    .card-header { background-color: #e9ecef; padding: 12px 15px; font-weight: bold; font-size: 16px; color: #333; border-bottom: 1px solid #dee2e6; }
+    .card-body { padding: 15px; }
 
+    .stats-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .stats-table th, .stats-table td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
+    .stats-table th { background-color: #f8f9fa; color: #495057; font-weight: 600; }
+    .stats-table tbody tr:nth-child(even) { background-color: #fdfdfd; }
+    
+    .text-left { text-align: left !important; }
+    .highlight-num { color: #1a73e8; font-weight: bold; font-size: 15px; }
+    
+    .btn-danger { background-color: #dc3545; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <h2 class="header-title">賽事報名資料批次彙整與統計系統</h2>
+
+  <div class="container">
+    <!-- 批次上傳區塊 -->
+    <div class="upload-zone">
+      <h3 style="margin-top: 0; color: #333;">匯入各校報名表 (可一次多選多個 Excel 檔)</h3>
+      <label class="upload-btn">
+        選擇 Excel 檔案
+        <!-- ★ multiple 屬性允許一次選取多個檔案 -->
+        <input type="file" id="batchFileInput" accept=".xlsx, .xls" multiple onchange="handleBatchUpload(event)">
+      </label>
+      <div id="uploadStatus" class="status-bar">目前尚未載入任何資料。</div>
+    </div>
+    
+    <div style="text-align: right; margin-bottom: 15px;">
+      <button class="btn-danger" onclick="clearAllData()">清除所有資料重新匯入</button>
+    </div>
+
+    <!-- 統計結果顯示區塊 -->
+    <div id="statisticsContainer">
+      <!-- JS 會將統計表格動態產生在這裡 -->
+    </div>
+  </div>
+
+  <script>
+    let masterData = []; // 儲存所有匯入的原始資料列
+
+    // 處理多檔案批次上傳
+    async function handleBatchUpload(e) {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+
+      const statusDiv = document.getElementById('uploadStatus');
+      statusDiv.innerHTML = `<span style="color:#fd7e14;">正在解析 ${files.length} 個檔案，請稍候...</span>`;
+      
+      let successCount = 0;
+      let newRowsCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        try {
+          const data = await readExcelFile(files[i]);
+          masterData.push(...data);
+          successCount++;
+          newRowsCount += data.length;
+        } catch (error) {
+          console.error(`檔案 ${files[i].name} 讀取失敗:`, error);
+        }
+      }
+
+      statusDiv.innerHTML = `<span style="color:#28a745; font-weight:bold;">✅ 成功匯入 ${successCount} 個檔案 (新增 ${newRowsCount} 筆選手資料)！總資料量：${masterData.length} 筆。</span>`;
+      e.target.value = ''; // 清空 input 讓下次可重複選取同檔案
+      
+      generateStatistics(); // 分析並產生統計表
+    }
+
+    // 將 FileReader 包裝成 Promise 以支援非同步依序讀取
+    function readExcelFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          try {
+            const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+            // 將第一張工作表轉為 JSON (將第一列視為物件的 Key)
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+            
+            // 過濾掉全空的列，或沒有比賽種類的無效列
+            const validRows = rows.filter(r => r['比賽種類'] && r['學校名稱'] && r['選手姓名']);
+            resolve(validRows);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function clearAllData() {
+      if (confirm('確定要清除畫面上所有的彙整資料嗎？')) {
+        masterData = [];
+        document.getElementById('uploadStatus').innerText = '目前尚未載入任何資料。';
+        document.getElementById('statisticsContainer').innerHTML = '';
+      }
+    }
+
+    // 核心功能：分組歸納與渲染統計表
+    function generateStatistics() {
+      const container = document.getElementById('statisticsContainer');
+      container.innerHTML = '';
+
+      if (masterData.length === 0) return;
+
+      // 1. 資料分組 (Data Grouping)
+      // 結構： groupedData[比賽種類][組別][比賽項目] = { schools: Set, teams: Set, players: 0 }
+      const groupedData = {};
+
+      masterData.forEach(row => {
+        const type = row['比賽種類']?.toString().trim();
+        const category = row['組別']?.toString().trim();
+        const item = row['比賽項目']?.toString().trim();
+        const school = row['學校名稱']?.toString().trim();
+        const teamName = row['隊名']?.toString().trim();
+
+        if (!type || !category || !item) return;
+
+        if (!groupedData[type]) groupedData[type] = {};
+        if (!groupedData[type][category]) groupedData[type][category] = {};
+        if (!groupedData[type][category][item]) {
+          groupedData[type][category][item] = {
+            schools: new Set(),
+            teams: new Set(),
+            players: 0
+          };
+        }
+
+        const target = groupedData[type][category][item];
+        target.schools.add(school); // 紀錄有報名此項的學校
+        target.players++;           // 參賽選手人次 +1
+
+        // 如果該項目有填寫隊名 (團體賽/雙打賽)，則將 "學校+隊名" 綁在一起算一隊 (例如: 丹鳳高中_A隊)
+        if (teamName) {
+          target.teams.add(`${school}_${teamName}`);
+        }
+      });
+
+      // 2. 渲染畫面 (Rendering)
+      // 遍歷所有比賽種類 (例如：全國中等學校撞球聯賽 [北區])
+      for (const type in groupedData) {
+        const typeCard = document.createElement('div');
+        typeCard.className = 'card';
+        
+        const typeHeader = document.createElement('div');
+        typeHeader.className = 'card-header';
+        typeHeader.innerHTML = `🏆 ${type}`;
+        typeCard.appendChild(typeHeader);
+
+        const typeBody = document.createElement('div');
+        typeBody.className = 'card-body';
+
+        // 遍歷組別 (例如：國中組、高中組)
+        for (const category in groupedData[type]) {
+          const catTitle = document.createElement('h4');
+          catTitle.style.cssText = "color: #fd7e14; border-left: 4px solid #fd7e14; padding-left: 8px; margin-top: 5px;";
+          catTitle.innerText = category;
+          typeBody.appendChild(catTitle);
+
+          const table = document.createElement('table');
+          table.className = 'stats-table';
+          table.innerHTML = `
+            <thead>
+              <tr>
+                <th class="text-left">比賽項目</th>
+                <th style="width: 15%;">報名學校數</th>
+                <th style="width: 15%;">總隊伍數</th>
+                <th style="width: 15%;">總參賽人次</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          `;
+          const tbody = table.querySelector('tbody');
+
+          // 遍歷具體比賽項目 (例如：男子九號球團體賽)
+          for (const item in groupedData[type][category]) {
+            const stats = groupedData[type][category][item];
+            
+            const tr = document.createElement('tr');
+            
+            // 隊伍數邏輯：若該項目有隊伍名稱則顯示隊伍數，否則顯示 '-' (個人賽)
+            const teamCountDisplay = stats.teams.size > 0 
+              ? `<span class="highlight-num">${stats.teams.size}</span> 隊` 
+              : '<span style="color:#aaa;">- (個人賽)</span>';
+
+            tr.innerHTML = `
+              <td class="text-left font-weight-bold">${item}</td>
+              <td><span class="highlight-num">${stats.schools.size}</span> 校</td>
+              <td>${teamCountDisplay}</td>
+              <td><span class="highlight-num">${stats.players}</span> 人</td>
+            `;
+            tbody.appendChild(tr);
+          }
+          
+          typeBody.appendChild(table);
+        }
+        
+        typeCard.appendChild(typeBody);
+        container.appendChild(typeCard);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -525,7 +525,9 @@
       updateDisplayTable();
       if (typeof updateEventPlayersSelection === 'function') updateEventPlayersSelection();
 
-      google.script.run.withSuccessHandler(populateEventTypes).getEventsByCategory(school.category);
+      // ★ 改為直接從 APP_DATA.events 讀取該部別的賽事
+      const eventsMap = APP_DATA.events[school.category] || {};
+      populateEventTypes(eventsMap);
     }
 
 

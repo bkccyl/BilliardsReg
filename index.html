@@ -928,10 +928,26 @@
     }
 
    function removeRegisteredEvent(index) {
+      // 1. 刪除該筆資料
       registeredEvents.splice(index, 1);
+
+      // 2. 自動重新編排所有隊伍名稱 (A, B, C...)
+      const teamCounters = {};
+      registeredEvents.forEach(evt => {
+        if (evt.teamName) { // 如果該項目有填寫隊名 (團體/雙打/混雙)
+          const key = `${evt.type}_${evt.item}`;
+          if (!teamCounters[key]) teamCounters[key] = 0;
+          
+          // 依序重新賦予 A隊、B隊、C隊...
+          evt.teamName = String.fromCharCode(65 + teamCounters[key]) + '隊';
+          teamCounters[key]++;
+        }
+      });
+
+      // 3. 刷新畫面與儲存狀態
       renderRegisteredEvents();
       updateDisplayTable();
-      updateEventPlayersSelection(); // ★ 新增這行：同步刷新隊名，釋放剛刪除的英文字母
+      updateEventPlayersSelection(); 
       if(typeof saveStateLocally === 'function') saveStateLocally();
     }
 
